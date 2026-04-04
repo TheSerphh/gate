@@ -1,0 +1,3115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GATE CBT Simulator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a3a5c;
+            --secondary: #e8f0fe;
+            --accent: #f4a012;
+            --danger: #d32f2f;
+            --success: #2e7d32;
+            --warning: #f57c00;
+            --marked: #9c27b0;
+            --marked-ans: #0d47a1;
+            --bg: #f0f2f5;
+            --panel: #ffffff;
+            --border: #d0d7de;
+            --text: #1a1a2e;
+            --hh: 56px;
+            --fh: 52px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            /* overflow:hidden only applies during exam — toggled via JS */
+            overflow: auto;
+            user-select: none
+        }
+
+        /* Exam and result screens need overflow:hidden on body to prevent double scroll */
+        body.in-exam {
+            overflow: hidden
+        }
+
+        /* ── UPLOAD ── */
+        #upload-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 24px 20px 60px;
+            gap: 16px;
+            background: linear-gradient(135deg, #08101e 0%, #1a3a5c 60%, #08101e 100%)
+        }
+
+        .logo h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: #fff;
+            text-align: center
+        }
+
+        .logo h1 .ion {
+            color: var(--accent)
+        }
+
+        .logo .ion-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: #000;
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 3px;
+            margin-left: 6px;
+            vertical-align: middle;
+            letter-spacing: 1px
+        }
+
+        .logo .sub {
+            font-size: 0.82rem;
+            color: #7fa8c8;
+            margin-top: 4px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            text-align: center
+        }
+
+        .logo .tagline {
+            font-size: 0.72rem;
+            color: #4a6a8a;
+            margin-top: 5px;
+            text-align: center
+        }
+
+        /* FIX: Upload box — consistent width, no overflow */
+        .upload-box {
+            width: 560px;
+            max-width: 100%;
+            background: rgba(255, 255, 255, 0.055);
+            border: 2px dashed rgba(255, 255, 255, 0.22);
+            border-radius: 18px;
+            padding: 30px 28px;
+            text-align: center;
+            cursor: pointer;
+            transition: all .25s;
+            color: white
+        }
+
+        .upload-box:hover,
+        .upload-box.drag-over {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent);
+            transform: scale(1.01)
+        }
+
+        .upload-icon {
+            font-size: 2.8rem;
+            margin-bottom: 8px
+        }
+
+        .upload-box h2 {
+            font-size: 1.05rem;
+            font-weight: 600
+        }
+
+        .upload-box p {
+            color: #7fa8c8;
+            margin-top: 5px;
+            font-size: 0.8rem;
+            line-height: 1.5
+        }
+
+        .browse-btn {
+            margin-top: 12px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 9px 26px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .2s;
+            display: inline-block
+        }
+
+        .browse-btn:hover {
+            background: #e08e00
+        }
+
+        /* FIX: Hide native file input completely — no visible element, no label leak */
+        #jf {
+            display: none !important;
+            visibility: hidden;
+            position: absolute;
+            width: 0;
+            height: 0;
+            opacity: 0;
+            pointer-events: none
+        }
+
+        /* ── MODE SWITCHER ── */
+        /* FIX: Equal sizing for both mode buttons */
+        .mode-switcher {
+            display: flex;
+            background: rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            padding: 5px;
+            width: 560px;
+            max-width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 4px
+        }
+
+        .mode-btn {
+            flex: 1;
+            min-width: 0;
+            padding: 12px 8px;
+            text-align: center;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all .2s;
+            color: #7fa8c8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px
+        }
+
+        .mode-icon {
+            font-size: 1.4rem;
+            line-height: 1
+        }
+
+        .mode-label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: .3px;
+            color: inherit;
+            white-space: nowrap
+        }
+
+        .mode-desc {
+            font-size: 0.62rem;
+            color: #4a6a8a;
+            white-space: nowrap
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: #000
+        }
+
+        .mode-btn.active .mode-desc,
+        .mode-btn.active .mode-label {
+            color: #3a2000
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1)
+        }
+
+        /* ── CONFIG BOX (shared wrapper style) ── */
+        .cfg-box {
+            width: 560px;
+            max-width: 100%;
+            background: rgba(255, 255, 255, 0.07);
+            border-radius: 16px;
+            padding: 20px;
+            display: none;
+            flex-direction: column;
+            gap: 13px;
+            border: 1px solid rgba(255, 255, 255, 0.1)
+        }
+
+        .cfg-title {
+            color: var(--accent);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        .cfg-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 9px
+        }
+
+        .cstat {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 9px;
+            text-align: center
+        }
+
+        .cstat .cv {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--accent)
+        }
+
+        .cstat .cl {
+            font-size: 0.62rem;
+            color: #7fa8c8;
+            text-transform: uppercase;
+            margin-top: 2px
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 9px
+        }
+
+        .filter-row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px
+        }
+
+        .fg {
+            display: flex;
+            flex-direction: column;
+            gap: 4px
+        }
+
+        .fg label,
+        .filter-group label {
+            font-size: 0.68rem;
+            color: #7fa8c8;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            font-weight: 600
+        }
+
+        .fsel {
+            padding: 7px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+            width: 100%
+        }
+
+        .fsel option {
+            background: #1a3a5c;
+            color: white
+        }
+
+        .fsel:focus {
+            border-color: var(--accent)
+        }
+
+        .tag-section label {
+            font-size: 0.68rem;
+            color: #7fa8c8;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 5px
+        }
+
+        .tag-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px
+        }
+
+        .stag {
+            padding: 4px 11px;
+            border-radius: 20px;
+            border: 1.5px solid rgba(255, 255, 255, 0.17);
+            background: rgba(255, 255, 255, 0.07);
+            color: #b0ccec;
+            font-size: 0.74rem;
+            cursor: pointer;
+            transition: all .15s;
+            font-weight: 500
+        }
+
+        .stag:hover {
+            background: rgba(255, 255, 255, 0.14)
+        }
+
+        .stag.on {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+            font-weight: 700
+        }
+
+        .dtag {
+            padding: 4px 10px;
+            border-radius: 14px;
+            border: 1.5px solid rgba(255, 255, 255, 0.17);
+            background: rgba(255, 255, 255, 0.07);
+            color: #b0ccec;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all .15s;
+            font-weight: 500
+        }
+
+        .dtag.on {
+            font-weight: 700
+        }
+
+        .dtag[data-d=Easy].on {
+            background: #1b5e20;
+            color: #a5d6a7;
+            border-color: #2e7d32
+        }
+
+        .dtag[data-d=Normal].on {
+            background: #1565c0;
+            color: #90caf9;
+            border-color: #1976d2
+        }
+
+        .dtag[data-d=Medium].on {
+            background: #e65100;
+            color: #ffcc80;
+            border-color: #f57c00
+        }
+
+        .dtag[data-d=Hard].on {
+            background: #b71c1c;
+            color: #ef9a9a;
+            border-color: #c62828
+        }
+
+        .live-count {
+            color: var(--accent);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+            background: rgba(244, 160, 18, 0.1);
+            border: 1px solid rgba(244, 160, 18, 0.25);
+            border-radius: 8px;
+            padding: 8px
+        }
+
+        /* ── TOPIC PANEL ── */
+        /* FIX: Subject name and meta no longer clipped — proper flex layout */
+        #topic-panel .subj-accordion {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-height: 420px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 4px
+        }
+
+        .subj-block {
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.11)
+        }
+
+        .subj-hdr {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 13px;
+            background: rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: background .15s;
+            user-select: none;
+            min-width: 0;
+            overflow: hidden
+                /* FIX: clip children that overflow row */
+        }
+
+        .subj-hdr:hover {
+            background: rgba(255, 255, 255, 0.13)
+        }
+
+        .subj-hdr.open {
+            background: rgba(244, 160, 18, 0.14)
+        }
+
+        .subj-chk {
+            width: 17px;
+            height: 17px;
+            min-width: 17px;
+            /* FIX: prevent shrink */
+            border-radius: 4px;
+            border: 2px solid rgba(255, 255, 255, 0.32);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.62rem;
+            transition: all .15s
+        }
+
+        .subj-chk.partial {
+            background: rgba(244, 160, 18, 0.3);
+            border-color: var(--accent);
+            color: var(--accent)
+        }
+
+        .subj-chk.full {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+            font-weight: 700
+        }
+
+        /* FIX: Subject name — truncate with ellipsis properly */
+        .subj-name {
+            flex: 1;
+            min-width: 0;
+            color: white;
+            font-size: 0.84rem;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        /* FIX: Meta count — no longer squeezed off screen */
+        .subj-meta {
+            font-size: 0.68rem;
+            color: #7fa8c8;
+            flex-shrink: 0;
+            white-space: nowrap;
+            background: rgba(255, 255, 255, 0.07);
+            padding: 2px 7px;
+            border-radius: 8px
+        }
+
+        .subj-arrow {
+            color: #7fa8c8;
+            font-size: 0.7rem;
+            transition: transform .2s;
+            flex-shrink: 0
+        }
+
+        .subj-hdr.open .subj-arrow {
+            transform: rotate(90deg)
+        }
+
+        .topic-list {
+            display: none;
+            padding: 7px 12px 9px 38px;
+            background: rgba(0, 0, 0, 0.17);
+            flex-direction: column;
+            gap: 3px
+        }
+
+        .topic-list.open {
+            display: flex
+        }
+
+        .topic-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background .12s;
+            min-width: 0
+        }
+
+        .topic-row:hover {
+            background: rgba(255, 255, 255, 0.06)
+        }
+
+        .topic-chk {
+            width: 14px;
+            height: 14px;
+            min-width: 14px;
+            /* FIX: prevent shrink */
+            border-radius: 3px;
+            border: 1.5px solid rgba(255, 255, 255, 0.26);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.56rem;
+            transition: all .12s
+        }
+
+        .topic-chk.on {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+            font-weight: 700
+        }
+
+        /* FIX: Topic name no longer clipped */
+        .topic-name {
+            flex: 1;
+            min-width: 0;
+            color: #a0bcdc;
+            font-size: 0.76rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .topic-cnt {
+            font-size: 0.65rem;
+            color: #4a6a8a;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 1px 7px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            white-space: nowrap
+        }
+
+        .sel-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            min-height: 0
+        }
+
+        .sel-pill {
+            background: rgba(244, 160, 18, 0.15);
+            border: 1px solid rgba(244, 160, 18, 0.28);
+            color: #f0c060;
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 0.69rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px
+        }
+
+        .sel-pill .px {
+            cursor: pointer;
+            color: #f57c00;
+            font-weight: 800
+        }
+
+        .topic-live-count {
+            color: var(--accent);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+            background: rgba(244, 160, 18, 0.1);
+            border: 1px solid rgba(244, 160, 18, 0.25);
+            border-radius: 8px;
+            padding: 8px
+        }
+
+        .parse-status {
+            color: #5a7a9a;
+            font-size: 0.8rem;
+            text-align: center
+        }
+
+        #start-btn {
+            display: none;
+            background: linear-gradient(90deg, #2196F3, #0d47a1);
+            color: white;
+            border: none;
+            padding: 13px 52px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all .2s;
+            box-shadow: 0 4px 24px rgba(33, 150, 243, .4);
+            text-transform: uppercase
+        }
+
+        #start-btn:hover {
+            opacity: .9;
+            transform: translateY(-2px)
+        }
+
+        /* ── EXAM ── */
+        #exam-screen {
+            display: none;
+            height: 100vh;
+            max-height: 100vh;
+            flex-direction: column;
+            overflow: hidden
+        }
+
+        .exam-hdr {
+            height: var(--hh);
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            color: white;
+            flex-shrink: 0;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .35);
+            z-index: 100
+        }
+
+        .eh-logo {
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            white-space: nowrap
+        }
+
+        .eh-logo .ion {
+            color: var(--accent)
+        }
+
+        .eh-div {
+            width: 1px;
+            height: 28px;
+            background: rgba(255, 255, 255, .17);
+            flex-shrink: 0
+        }
+
+        .eh-name {
+            font-size: 0.78rem;
+            color: #7fb8d8;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .mode-badge {
+            background: rgba(244, 160, 18, .15);
+            color: var(--accent);
+            padding: 2px 8px;
+            border-radius: 7px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: .5px;
+            border: 1px solid rgba(244, 160, 18, .25)
+        }
+
+        .eh-spc {
+            flex: 1
+        }
+
+        .eh-prog {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            color: #7fb8d8
+        }
+
+        .prog-bar {
+            width: 72px;
+            height: 5px;
+            background: rgba(255, 255, 255, .15);
+            border-radius: 3px;
+            overflow: hidden
+        }
+
+        .prog-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width .4s
+        }
+
+        .timer-box {
+            background: #0a1e38;
+            border: 1.5px solid rgba(255, 255, 255, .17);
+            border-radius: 8px;
+            padding: 5px 13px;
+            text-align: center;
+            flex-shrink: 0
+        }
+
+        .timer-lbl {
+            font-size: 0.58rem;
+            color: #5a8ab0;
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        .timer-val {
+            font-size: 1.22rem;
+            font-weight: 700;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px
+        }
+
+        .timer-val.warn {
+            color: #ff9800
+        }
+
+        .timer-val.danger {
+            color: #ff5252;
+            animation: blink 1s infinite
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .4
+            }
+        }
+
+        .cand-info {
+            font-size: 0.7rem;
+            color: #7fb8d8;
+            text-align: right;
+            line-height: 1.5;
+            flex-shrink: 0
+        }
+
+        .exam-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden
+        }
+
+        .q-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0
+        }
+
+        .sec-tabs {
+            background: var(--panel);
+            border-bottom: 2px solid var(--border);
+            padding: 0 13px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            min-height: 40px;
+            overflow-x: auto;
+            flex-shrink: 0
+        }
+
+        .sec-tab {
+            padding: 6px 14px;
+            border: 1.5px solid var(--border);
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            background: #f0f2f5;
+            color: #555;
+            cursor: pointer;
+            font-size: 0.76rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all .15s
+        }
+
+        .sec-tab:hover {
+            background: var(--secondary)
+        }
+
+        .sec-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary)
+        }
+
+        .sec-tab.locked {
+            opacity: .5;
+            cursor: not-allowed
+        }
+
+        .q-infobar {
+            background: #eef2fd;
+            border-bottom: 1px solid #c5d5f5;
+            padding: 5px 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.76rem;
+            color: #333;
+            flex-shrink: 0;
+            flex-wrap: wrap
+        }
+
+        .q-type-badge {
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.68rem;
+            font-weight: 700
+        }
+
+        .badge-mcq {
+            background: #1a3a5c
+        }
+
+        .badge-msq {
+            background: #1565c0
+        }
+
+        .badge-nat {
+            background: #bf360c
+        }
+
+        .q-marks {
+            color: var(--success);
+            font-weight: 700
+        }
+
+        .q-neg {
+            color: var(--danger);
+            font-weight: 700
+        }
+
+        .chip {
+            background: rgba(26, 58, 92, .09);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.67rem;
+            font-weight: 600;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .chip-topic {
+            background: rgba(21, 101, 192, .1);
+            color: #1565c0
+        }
+
+        .diff-Easy {
+            background: #e8f5e9;
+            color: #2e7d32
+        }
+
+        .diff-Normal {
+            background: #e3f2fd;
+            color: #1565c0
+        }
+
+        .diff-Medium {
+            background: #fff3e0;
+            color: #e65100
+        }
+
+        .diff-Hard {
+            background: #ffebee;
+            color: #c62828
+        }
+
+        .chip-diff {
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 0.66rem;
+            font-weight: 700
+        }
+
+        .chip-year {
+            background: rgba(0, 0, 0, .05);
+            color: #555;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 0.66rem;
+            font-weight: 600
+        }
+
+        .q-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 26px 14px;
+            background: white
+        }
+
+        .q-num-lbl {
+            font-size: 0.78rem;
+            color: #888;
+            margin-bottom: 7px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 7px
+        }
+
+        .src-link {
+            font-size: 0.68rem;
+            color: #90a4ae;
+            text-decoration: none;
+            margin-left: auto
+        }
+
+        .src-link:hover {
+            color: var(--primary)
+        }
+
+        .q-text {
+            font-size: 0.98rem;
+            line-height: 1.85;
+            color: #1a1a2e;
+            margin-bottom: 18px;
+            word-break: break-word;
+            user-select: text
+        }
+
+        /* ── CODE BLOCKS inside questions ── */
+        .q-text pre {
+            background: #1e2a3a;
+            color: #e8f0fe;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin: 10px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', Consolas, 'Lucida Console', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            border-left: 3px solid var(--accent);
+            white-space: pre;
+            user-select: text
+        }
+
+        .q-text code {
+            font-family: 'Courier New', Consolas, 'Lucida Console', monospace;
+            font-size: 0.88em;
+            background: #eef2fd;
+            color: #1a3a5c;
+            padding: 1px 5px;
+            border-radius: 4px;
+            user-select: text
+        }
+
+        .q-text pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+            border-radius: 0;
+            font-size: inherit
+        }
+
+        /* language label on code blocks */
+        .q-text pre[data-lang]::before {
+            content: attr(data-lang);
+            display: block;
+            font-size: 0.65rem;
+            color: var(--accent);
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-family: 'Segoe UI', sans-serif
+        }
+
+        .msq-hint {
+            background: #e3f2fd;
+            border-left: 3px solid #1565c0;
+            padding: 6px 11px;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.76rem;
+            color: #1565c0;
+            font-weight: 600;
+            margin-bottom: 12px
+        }
+
+        .opts-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        .opt {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 14px;
+            border: 2px solid var(--border);
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all .15s;
+            background: #fafbfc;
+            user-select: text
+        }
+
+        .opt:hover {
+            border-color: #90b0d0;
+            background: #f0f5ff
+        }
+
+        .opt.sel {
+            border-color: var(--primary);
+            background: var(--secondary)
+        }
+
+        .opt.sel-msq {
+            border-color: #1565c0;
+            background: #e3f2fd
+        }
+
+        .opt-bubble {
+            width: 27px;
+            height: 27px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.76rem;
+            font-weight: 700;
+            flex-shrink: 0;
+            color: #666;
+            transition: all .15s;
+            margin-top: 1px
+        }
+
+        .opt.sel .opt-bubble {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white
+        }
+
+        .opt.sel-msq .opt-bubble {
+            background: #1565c0;
+            border-color: #1565c0;
+            color: white
+        }
+
+        .opt-text {
+            font-size: 0.91rem;
+            line-height: 1.7;
+            flex: 1;
+            user-select: text;
+            word-break: break-word
+        }
+
+        .nat-area {
+            margin-top: 12px
+        }
+
+        .nat-area label {
+            font-size: 0.83rem;
+            color: #555;
+            display: block;
+            margin-bottom: 7px;
+            font-weight: 600
+        }
+
+        .nat-inp {
+            width: 200px;
+            padding: 9px 13px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1.08rem;
+            font-family: 'Courier New', monospace;
+            outline: none;
+            transition: border .15s;
+            user-select: text
+        }
+
+        .nat-inp:focus {
+            border-color: var(--primary)
+        }
+
+        .nat-kb {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            margin-top: 11px;
+            max-width: 245px
+        }
+
+        .nat-key {
+            padding: 8px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            transition: all .12s;
+            color: #333
+        }
+
+        .nat-key:hover {
+            background: var(--secondary);
+            border-color: var(--primary)
+        }
+
+        .nat-bs {
+            background: #fff0f0;
+            border-color: #ffccc7;
+            color: var(--danger)
+        }
+
+        .nat-clr {
+            background: #fff3e0;
+            border-color: #ffe0b2;
+            color: var(--warning)
+        }
+
+        .exam-footer {
+            height: var(--fh);
+            background: var(--panel);
+            border-top: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 13px;
+            gap: 6px;
+            flex-shrink: 0;
+            overflow-x: auto
+        }
+
+        .btn {
+            padding: 6px 13px;
+            border-radius: 6px;
+            border: 1.5px solid transparent;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s;
+            white-space: nowrap;
+            flex-shrink: 0
+        }
+
+        .btn-clear {
+            background: #fff;
+            border-color: var(--border);
+            color: #555
+        }
+
+        .btn-clear:hover {
+            background: #f0f0f0
+        }
+
+        .btn-mark {
+            background: var(--marked);
+            color: white
+        }
+
+        .btn-mark:hover {
+            background: #7b1fa2
+        }
+
+        .btn-markans {
+            background: #6a0080;
+            color: white
+        }
+
+        .btn-markans:hover {
+            background: #4a0060
+        }
+
+        .btn-save {
+            background: var(--success);
+            color: white
+        }
+
+        .btn-save:hover {
+            background: #1b5e20
+        }
+
+        .btn-sub {
+            background: var(--danger);
+            color: white;
+            margin-left: auto
+        }
+
+        .btn-sub:hover {
+            background: #b71c1c
+        }
+
+        .btn-nav {
+            background: var(--primary);
+            color: white
+        }
+
+        .btn-nav:hover {
+            opacity: .85
+        }
+
+        .right-panel {
+            width: 266px;
+            background: var(--panel);
+            border-left: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0
+        }
+
+        .rp-cand {
+            background: var(--primary);
+            color: white;
+            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0
+        }
+
+        .rp-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .95rem;
+            font-weight: 700;
+            color: #000;
+            flex-shrink: 0
+        }
+
+        .rp-name {
+            font-size: 0.8rem;
+            font-weight: 600
+        }
+
+        .rp-roll {
+            font-size: 0.66rem;
+            color: #7fb8d8
+        }
+
+        .rp-legend {
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px;
+            flex-shrink: 0
+        }
+
+        .leg-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.66rem;
+            color: #444
+        }
+
+        .leg-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.5rem;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0
+        }
+
+        .ld-nv {
+            background: #808080
+        }
+
+        .ld-na {
+            background: var(--danger)
+        }
+
+        .ld-ans {
+            background: var(--success)
+        }
+
+        .ld-mrk {
+            background: var(--marked)
+        }
+
+        .ld-mas {
+            background: var(--marked-ans)
+        }
+
+        .rp-sec-lbl {
+            padding: 5px 10px 3px;
+            font-size: 0.66rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .palette {
+            flex: 1;
+            overflow-y: auto;
+            padding: 7px 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-content: flex-start
+        }
+
+        .pb {
+            width: 31px;
+            height: 31px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all .15s;
+            color: white
+        }
+
+        .pb:hover {
+            transform: scale(1.12);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .2)
+        }
+
+        .pb.cur {
+            border-color: #000 !important;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, .22)
+        }
+
+        .pb-nv {
+            background: #808080
+        }
+
+        .pb-na {
+            background: var(--danger)
+        }
+
+        .pb-ans {
+            background: var(--success)
+        }
+
+        .pb-mrk {
+            background: var(--marked)
+        }
+
+        .pb-mas {
+            background: var(--marked-ans)
+        }
+
+        .rp-stats {
+            padding: 7px 10px;
+            border-top: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            flex-shrink: 0
+        }
+
+        .stat-box {
+            background: #f5f7fa;
+            border-radius: 6px;
+            padding: 5px 3px;
+            text-align: center
+        }
+
+        .sv {
+            font-size: 0.92rem;
+            font-weight: 700
+        }
+
+        .sl {
+            font-size: 0.56rem;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 1px
+        }
+
+        .sv-ans {
+            color: var(--success)
+        }
+
+        .sv-na {
+            color: var(--danger)
+        }
+
+        .sv-mrk {
+            color: var(--marked)
+        }
+
+        /* ── RESULT ── */
+        #result-screen {
+            display: none;
+            height: 100vh;
+            max-height: 100vh;
+            flex-direction: column;
+            background: var(--bg);
+            overflow: hidden
+        }
+
+        .res-hdr {
+            background: var(--primary);
+            padding: 13px 24px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0
+        }
+
+        .res-hdr h2 {
+            font-size: 1.1rem;
+            font-weight: 700
+        }
+
+        .res-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-width: 1060px;
+            margin: 0 auto;
+            width: 100%
+        }
+
+        .score-card {
+            background: white;
+            border-radius: 14px;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 2px 14px rgba(0, 0, 0, .07)
+        }
+
+        .score-donut {
+            width: 100px;
+            height: 100px;
+            flex-shrink: 0
+        }
+
+        .score-info h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--primary)
+        }
+
+        .score-pct {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1.1
+        }
+
+        .score-meta {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-top: 7px
+        }
+
+        .score-chip {
+            padding: 3px 9px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: #f0f2f5;
+            color: #555
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 13px 9px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .06)
+        }
+
+        .sc-val {
+            font-size: 1.5rem;
+            font-weight: 800
+        }
+
+        .sc-lbl {
+            font-size: 0.66rem;
+            color: #666;
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: .4px
+        }
+
+        .sc-green {
+            color: var(--success)
+        }
+
+        .sc-red {
+            color: var(--danger)
+        }
+
+        .sc-orange {
+            color: var(--warning)
+        }
+
+        .sc-blue {
+            color: var(--primary)
+        }
+
+        .sc-purple {
+            color: var(--marked)
+        }
+
+        .subj-bkdn {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 17px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .06)
+        }
+
+        .sec-title {
+            font-size: 0.86rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 11px
+        }
+
+        .subj-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .subj-row {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 0.76rem
+        }
+
+        .sr-name {
+            width: 155px;
+            color: #333;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 0
+        }
+
+        .sr-bar-wrap {
+            flex: 1;
+            height: 8px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden
+        }
+
+        .sr-bar {
+            height: 100%;
+            border-radius: 5px;
+            transition: width .8s ease
+        }
+
+        .sr-stats {
+            width: 95px;
+            text-align: right;
+            color: #666;
+            font-size: 0.7rem;
+            flex-shrink: 0
+        }
+
+        .topic-bkdn {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 17px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .06)
+        }
+
+        .topic-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.77rem
+        }
+
+        .topic-table th {
+            background: #f5f7fa;
+            color: #555;
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: 700;
+            border-bottom: 2px solid var(--border)
+        }
+
+        .topic-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .topic-table tr:hover td {
+            background: #fafbff
+        }
+
+        .topic-acc-bar {
+            width: 70px;
+            height: 7px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 6px
+        }
+
+        .topic-acc-fill {
+            height: 100%;
+            border-radius: 4px
+        }
+
+        .review-wrap {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 17px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .06)
+        }
+
+        .rf-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+            flex-wrap: wrap
+        }
+
+        .rf-btn {
+            padding: 4px 12px;
+            border-radius: 14px;
+            border: 1.5px solid var(--border);
+            background: white;
+            font-size: 0.73rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s
+        }
+
+        .rf-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary)
+        }
+
+        .rev-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.77rem
+        }
+
+        .rev-table th {
+            background: var(--primary);
+            color: white;
+            padding: 7px 8px;
+            text-align: left;
+            font-weight: 600
+        }
+
+        .rev-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top
+        }
+
+        .rev-table tr:hover td {
+            background: #f5f7ff
+        }
+
+        .badge-ok {
+            background: #e8f5e9;
+            color: var(--success);
+            padding: 2px 7px;
+            border-radius: 9px;
+            font-size: 0.68rem;
+            font-weight: 700
+        }
+
+        .badge-wr {
+            background: #ffebee;
+            color: var(--danger);
+            padding: 2px 7px;
+            border-radius: 9px;
+            font-size: 0.68rem;
+            font-weight: 700
+        }
+
+        .badge-sk {
+            background: #f5f5f5;
+            color: #888;
+            padding: 2px 7px;
+            border-radius: 9px;
+            font-size: 0.68rem;
+            font-weight: 700
+        }
+
+        .badge-pt {
+            background: #fff8e1;
+            color: #f57c00;
+            padding: 2px 7px;
+            border-radius: 9px;
+            font-size: 0.68rem;
+            font-weight: 700
+        }
+
+        /* ── MODALS ── */
+        .modal-ov {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(3px)
+        }
+
+        .modal-box {
+            background: white;
+            border-radius: 16px;
+            padding: 26px;
+            width: 420px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, .28);
+            text-align: center
+        }
+
+        .modal-icon {
+            font-size: 2.4rem;
+            margin-bottom: 9px
+        }
+
+        .modal-box h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 7px
+        }
+
+        .modal-box p {
+            color: #555;
+            font-size: 0.83rem;
+            line-height: 1.6
+        }
+
+        .modal-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 13px 0;
+            text-align: left
+        }
+
+        .ms-item {
+            background: #f5f7fa;
+            border-radius: 8px;
+            padding: 7px 11px
+        }
+
+        .ms-lbl {
+            font-size: 0.66rem;
+            color: #888;
+            text-transform: uppercase
+        }
+
+        .ms-val {
+            font-size: .98rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-top: 2px
+        }
+
+        .modal-acts {
+            display: flex;
+            gap: 9px;
+            justify-content: center;
+            margin-top: 16px
+        }
+
+        .btn-mc {
+            padding: 8px 18px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: #555
+        }
+
+        .btn-mc:hover {
+            background: #f0f0f0
+        }
+
+        .btn-mok {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            background: var(--danger);
+            color: white;
+            cursor: pointer;
+            font-size: 0.83rem;
+            font-weight: 700
+        }
+
+        .btn-mok:hover {
+            background: #b71c1c
+        }
+
+        /* ── LOADING ── */
+        #loading-ov {
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 16, 38, .9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            flex-direction: column;
+            gap: 14px;
+            color: white
+        }
+
+        .spin {
+            width: 44px;
+            height: 44px;
+            border: 5px solid rgba(255, 255, 255, .15);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .75s linear infinite
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        .load-txt {
+            font-size: 0.88rem;
+            color: #7fb8d8
+        }
+
+        .load-bar {
+            width: 270px;
+            height: 5px;
+            background: rgba(255, 255, 255, .12);
+            border-radius: 3px;
+            overflow: hidden
+        }
+
+        .load-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width .3s;
+            width: 0
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c0c0c0;
+            border-radius: 3px
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #999
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading-ov">
+        <div class="spin"></div>
+        <div class="load-txt" id="load-msg">Loading...</div>
+        <div class="load-bar">
+            <div class="load-fill" id="load-fill"></div>
+        </div>
+    </div>
+
+    <!-- ══════════════════ UPLOAD SCREEN ══════════════════ -->
+    <div id="upload-screen">
+        <div class="logo">
+            <h1>TCS <span class="ion">iON</span> <span class="ion-badge">CBT</span></h1>
+            <div class="sub">Graduate Aptitude Test in Engineering</div>
+            <div class="tagline">Official GATE PYQ Simulator · 1987–2025 · GateOverflow Question Bank</div>
+        </div>
+
+        <!-- FIX 1: upload-box is the only clickable area; native input is fully hidden -->
+        <div class="upload-box" id="upload-box">
+            <div class="upload-icon">🗃️</div>
+            <h2>Drop your GATE JSON Question Bank here</h2>
+            <p>Supports GateOverflow / GateQuest format<br>2608 questions · MCQ + MSQ + NAT · LaTeX · 1987–2025</p>
+            <!-- Styled button triggers the hidden input -->
+            <button class="browse-btn" onclick="document.getElementById('jf').click()">Browse JSON File</button>
+            <!-- FIX: id="jf" to match JS; display:none hides both button and filename label -->
+            <input type="file" id="jf" accept=".json">
+        </div>
+
+        <!-- MODE SWITCHER (revealed after JSON loads) -->
+        <!-- FIX 3: equal flex children, consistent sizing -->
+        <div class="mode-switcher" id="mode-sw" style="display:none">
+            <div class="mode-btn active" id="mb-paper" onclick="switchMode('paper')">
+                <div class="mode-icon">📄</div>
+                <div class="mode-label">Full Paper Test</div>
+                <div class="mode-desc">Filter by year · all subjects</div>
+            </div>
+            <div class="mode-btn" id="mb-topic" onclick="switchMode('topic')">
+                <div class="mode-icon">🎯</div>
+                <div class="mode-label">Topic-wise Test</div>
+                <div class="mode-desc">Pick subjects &amp; topics to drill</div>
+            </div>
+        </div>
+
+        <!-- ── FULL PAPER CONFIG ── -->
+        <div class="cfg-box" id="paper-panel">
+            <div class="cfg-title">📊 Question Bank — Full Paper Mode</div>
+            <div class="cfg-stats" id="cfg-stats"></div>
+            <div class="filter-row">
+                <div class="fg"><label>📅 Year</label>
+                    <select class="fsel" id="f-year" onchange="applyFilters()">
+                        <option value="all">All Years (1987–2025)</option>
+                    </select>
+                </div>
+                <div class="fg"><label>❓ Type</label>
+                    <select class="fsel" id="f-type" onchange="applyFilters()">
+                        <option value="all">All Types</option>
+                        <option value="multiple-choice">MCQ / MSQ only</option>
+                        <option value="numerical">NAT only</option>
+                    </select>
+                </div>
+                <div class="fg"><label>🔀 Order</label>
+                    <select class="fsel" id="f-order">
+                        <option value="original">Original (by year)</option>
+                        <option value="shuffle">Shuffle</option>
+                        <option value="subject">Group by Subject</option>
+                    </select>
+                </div>
+            </div>
+            <div class="fg"><label>🔢 Max Questions</label>
+                <select class="fsel" id="f-max" onchange="applyFilters()" style="max-width:260px">
+                    <option value="all">All Questions</option>
+                    <option value="65">65 (1 Full Paper)</option>
+                    <option value="130">130 (2 Papers)</option>
+                    <option value="50">50 (Quick Practice)</option>
+                    <option value="30">30 (Mini Test)</option>
+                </select>
+            </div>
+            <div class="tag-section"><label>📚 Subjects (none = all)</label>
+                <div class="tag-grid" id="subj-tags"></div>
+            </div>
+            <div class="tag-section"><label>⚡ Difficulty</label>
+                <div class="tag-grid" id="diff-tags"></div>
+            </div>
+            <div class="live-count" id="paper-count">Loading…</div>
+        </div>
+
+        <!-- ── TOPIC TEST CONFIG ── -->
+        <div class="cfg-box" id="topic-panel">
+            <div class="cfg-title">🎯 Topic-wise Test</div>
+
+            <!-- Selection pills summary -->
+            <div class="sel-pills" id="sel-pills" style="display:none"></div>
+
+            <!-- Subject → Topic accordion -->
+            <!-- FIX 2: accordion rows now use proper min-width:0 + text-overflow truncation -->
+            <div class="subj-accordion" id="subj-accordion"></div>
+
+            <!-- Topic test filters -->
+            <div class="filter-row">
+                <div class="fg"><label>❓ Type</label>
+                    <select class="fsel" id="tf-type" onchange="applyTopicFilters()">
+                        <option value="all">All Types</option>
+                        <option value="multiple-choice">MCQ / MSQ only</option>
+                        <option value="numerical">NAT only</option>
+                    </select>
+                </div>
+                <div class="fg"><label>⚡ Difficulty</label>
+                    <select class="fsel" id="tf-diff" onchange="applyTopicFilters()">
+                        <option value="all">All Difficulties</option>
+                        <option value="Easy">Easy</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
+                <div class="fg"><label>🔢 Max Qs</label>
+                    <select class="fsel" id="tf-max" onchange="applyTopicFilters()">
+                        <option value="all">All Matching</option>
+                        <option value="30">30 questions</option>
+                        <option value="20">20 questions</option>
+                        <option value="10">10 questions</option>
+                    </select>
+                </div>
+            </div>
+            <div class="fg" style="max-width:220px"><label>🔀 Order</label>
+                <select class="fsel" id="tf-order">
+                    <option value="shuffle">Shuffle (recommended)</option>
+                    <option value="original">By year</option>
+                </select>
+            </div>
+            <div class="topic-live-count" id="topic-count">← Select at least one topic above to begin</div>
+        </div>
+
+        <div class="parse-status" id="parse-status"></div>
+        <button id="start-btn" onclick="startExam()">▶ START EXAM</button>
+    </div>
+
+    <!-- ══════════════════ EXAM SCREEN ══════════════════ -->
+    <div id="exam-screen">
+        <div class="exam-hdr">
+            <div class="eh-logo">TCS <span class="ion">iON</span></div>
+            <div class="eh-div"></div>
+            <div class="eh-name" id="eh-name">GATE CS</div>
+            <span class="mode-badge" id="mode-badge">PAPER</span>
+            <div class="eh-spc"></div>
+            <div class="eh-prog">
+                <span id="prog-txt">0/65</span>
+                <div class="prog-bar">
+                    <div class="prog-fill" id="prog-fill" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="eh-div"></div>
+            <div class="timer-box">
+                <div class="timer-lbl">Time Remaining</div>
+                <div class="timer-val" id="timer">03:00:00</div>
+            </div>
+            <div class="eh-div"></div>
+            <div class="cand-info">
+                <div style="font-weight:700;font-size:0.72rem">Candidate</div>
+                <div>GATE2025XXXXXX</div>
+            </div>
+        </div>
+
+        <div class="exam-body">
+            <div class="q-panel">
+                <div class="sec-tabs" id="sec-tabs"></div>
+                <div class="q-infobar">
+                    <span class="q-type-badge" id="q-badge">MCQ</span>
+                    <span>Marks: <span class="q-marks" id="q-marks">+1</span></span>
+                    <span>Neg: <span class="q-neg" id="q-neg">-0.33</span></span>
+                    <span id="q-subj-chip"></span>
+                    <span id="q-topic-chip"></span>
+                    <span id="q-diff-chip"></span>
+                    <span id="q-year-chip"></span>
+                    <div style="flex:1"></div>
+                    <span style="font-size:0.72rem;color:#777" id="q-global">Q.1 of 65</span>
+                </div>
+                <div class="q-content" id="q-content">
+                    <div class="q-num-lbl">
+                        <span id="q-num-lbl">Question 1</span>
+                        <a id="q-src" href="#" target="_blank" rel="noopener" class="src-link" style="display:none">🔗
+                            GateOverflow</a>
+                    </div>
+                    <div class="q-text" id="q-text"></div>
+                    <div id="msq-hint" class="msq-hint" style="display:none">📌 MSQ — multiple options may be correct.
+                        Select all that apply.</div>
+                    <div class="opts-grid" id="opts-grid"></div>
+                    <div class="nat-area" id="nat-area" style="display:none">
+                        <label>Enter numerical answer:</label>
+                        <input type="text" class="nat-inp" id="nat-inp" placeholder="e.g. 42 or 3.14">
+                        <div class="nat-kb" id="nat-kb"></div>
+                    </div>
+                </div>
+                <div class="exam-footer">
+                    <button class="btn btn-clear" onclick="clearResp()">🗑 Clear</button>
+                    <button class="btn btn-mark" onclick="markReview()">🔖 Mark Review</button>
+                    <button class="btn btn-markans" onclick="markAndSave()">🔖+ Mark &amp; Save</button>
+                    <button class="btn btn-save" onclick="saveNext()">✔ Save &amp; Next</button>
+                    <div style="flex:1;min-width:4px"></div>
+                    <button class="btn btn-nav" onclick="navQ(-1)">◀ Prev</button>
+                    <button class="btn btn-nav" onclick="navQ(1)">Next ▶</button>
+                    <button class="btn btn-sub" onclick="showSubmitModal()">📤 Submit</button>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="rp-cand">
+                    <div class="rp-avatar">C</div>
+                    <div>
+                        <div class="rp-name">Candidate</div>
+                        <div class="rp-roll" id="rp-lbl">GATE CS</div>
+                    </div>
+                </div>
+                <div class="rp-legend">
+                    <div class="leg-item">
+                        <div class="leg-dot ld-nv">1</div><span>Not Visited</span>
+                    </div>
+                    <div class="leg-item">
+                        <div class="leg-dot ld-na">1</div><span>Not Answered</span>
+                    </div>
+                    <div class="leg-item">
+                        <div class="leg-dot ld-ans">1</div><span>Answered</span>
+                    </div>
+                    <div class="leg-item">
+                        <div class="leg-dot ld-mrk">1</div><span>Marked</span>
+                    </div>
+                    <div class="leg-item" style="grid-column:span 2">
+                        <div class="leg-dot ld-mas">1</div><span>Marked &amp; Answered</span>
+                    </div>
+                </div>
+                <div class="rp-sec-lbl" id="rp-sec-lbl">Section</div>
+                <div class="palette" id="palette"></div>
+                <div class="rp-stats">
+                    <div class="stat-box">
+                        <div class="sv sv-ans" id="st-ans">0</div>
+                        <div class="sl">Answered</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="sv sv-na" id="st-na">0</div>
+                        <div class="sl">Not Ans</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="sv sv-mrk" id="st-mrk">0</div>
+                        <div class="sl">Marked</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════ RESULT SCREEN ══════════════════ -->
+    <div id="result-screen">
+        <div class="res-hdr">
+            <div style="flex:1">
+                <h2>📊 Exam Result &amp; Analysis</h2>
+                <div style="font-size:0.73rem;color:#7fb8d8;margin-top:2px" id="res-exam-lbl">GATE CS</div>
+            </div>
+            <button class="btn btn-save" onclick="resetToUpload()" style="font-size:0.82rem">🔄 New Exam</button>
+        </div>
+        <div class="res-body" id="res-body"></div>
+    </div>
+
+    <!-- SUBMIT MODAL -->
+    <div class="modal-ov" id="submit-modal" style="display:none">
+        <div class="modal-box">
+            <div class="modal-icon">📤</div>
+            <h3>Submit Examination?</h3>
+            <p>Review your attempt before final submission.</p>
+            <div class="modal-stats" id="modal-stats"></div>
+            <div class="modal-acts">
+                <button class="btn-mc" onclick="closeModal('submit-modal')">Cancel</button>
+                <button class="btn-mok" onclick="submitExam()">Submit Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION LOCK MODAL -->
+    <div class="modal-ov" id="sec-modal" style="display:none">
+        <div class="modal-box">
+            <div class="modal-icon">⚠️</div>
+            <h3>Switch Section?</h3>
+            <p id="sec-modal-txt">The current section will be locked permanently.</p>
+            <div class="modal-acts">
+                <button class="btn-mc" onclick="closeModal('sec-modal')">Stay Here</button>
+                <button class="btn-mok" id="sec-modal-ok">Switch</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════
+        //  GLOBALS
+        // ═══════════════════════════════════════════════════════
+        let bank = [], questions = [], sections = [];
+        let curSec = 0, curQ = 0;
+        let answers = {}, statuses = {};
+        let timerInt = null, timeLeft = 10800;
+        let lockedSecs = new Set(), pendingSec = null;
+        let selSubjs = new Set(), selDiffs = new Set();
+        let selTopics = new Map();
+        let currentMode = 'paper';
+
+        const S = { NV: 'nv', NA: 'na', ANS: 'ans', MRK: 'mrk', MAS: 'mas' };
+
+        // ═══════════════════════════════════════════════════════
+        //  UPLOAD / DROP
+        // ═══════════════════════════════════════════════════════
+        const uploadBox = document.getElementById('upload-box');
+        const jfInput = document.getElementById('jf');
+
+        // FIX: click on box itself also triggers file picker (but not on the button — button has its own onclick)
+        uploadBox.addEventListener('click', e => {
+            if (e.target.classList.contains('browse-btn')) return;
+            jfInput.click();
+        });
+        uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('drag-over') });
+        uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('drag-over'));
+        uploadBox.addEventListener('drop', e => { e.preventDefault(); uploadBox.classList.remove('drag-over'); const f = [...e.dataTransfer.files].find(f => f.name.endsWith('.json')); if (f) loadJSON(f) });
+        jfInput.addEventListener('change', () => { if (jfInput.files[0]) loadJSON(jfInput.files[0]) });
+
+        async function loadJSON(file) {
+            showLoad('Parsing question bank…'); setP(20);
+            try {
+                const raw = JSON.parse(await file.text());
+                setP(60);
+                bank = normalise(raw);
+                setP(90);
+                hideLoad();
+                document.getElementById('mode-sw').style.display = 'flex';
+                buildPaperUI();
+                buildTopicUI();
+                switchMode('paper');
+                document.getElementById('parse-status').textContent = `✅ ${file.name} — ${bank.length} questions loaded`;
+            } catch (e) {
+                hideLoad();
+                document.getElementById('parse-status').textContent = `❌ Error: ${e.message}`;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  NORMALISE
+        // ═══════════════════════════════════════════════════════
+        function normalise(raw) {
+            const arr = Array.isArray(raw) ? raw : (raw.questions || Object.values(raw));
+            return arr.map((q, i) => {
+                const qtype = (q.questionType || '').toLowerCase();
+                const isNAT = qtype === 'numerical';
+                const opts = Array.isArray(q.options) ? q.options : [];
+                let ca = q.correctAnswer;
+                let correctIdx = null, correctNum = null;
+                if (isNAT) {
+                    correctNum = (ca !== null && ca !== undefined) ? String(ca) : null;
+                } else {
+                    if (Array.isArray(ca)) correctIdx = ca.map(x => typeof x === 'number' ? x : parseInt(x)).filter(x => !isNaN(x));
+                    else if (typeof ca === 'number') correctIdx = [ca];
+                    else if (typeof ca === 'string') {
+                        if (/^[A-Da-d]$/.test(ca.trim())) correctIdx = [ca.trim().toUpperCase().charCodeAt(0) - 65];
+                        else if (!isNaN(ca)) correctIdx = [parseInt(ca)];
+                    }
+                }
+                const isMSQ = !isNAT && correctIdx && correctIdx.length > 1;
+                const displayType = isNAT ? 'NAT' : isMSQ ? 'MSQ' : 'MCQ';
+                const negMarks = isNAT || isMSQ ? 0 : (q.marks === 2 ? 0.67 : 0.33);
+                const subj = q.subject || 'General';
+                const section = (subj === 'Aptitude') ? 'General Aptitude' : 'Computer Science';
+                return {
+                    id: i, origId: q.id,
+                    number: q.questionNumber || (i + 1),
+                    year: q.year || null,
+                    subject: subj,
+                    topic: q.topic || 'General',
+                    section, displayType, isNAT, isMSQ,
+                    options: opts, correctIdx, correctNum,
+                    marks: parseFloat(q.marks) || 1, negMarks,
+                    difficulty: q.difficulty || 'Normal',
+                    question: (q.question || '').trim(),
+                    sourceURL: q.sourceURL || null,
+                    tags: q.tags || []
+                };
+            }).filter(q => q.question.length > 4);
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  MODE SWITCHER
+        // ═══════════════════════════════════════════════════════
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('mb-paper').classList.toggle('active', mode === 'paper');
+            document.getElementById('mb-topic').classList.toggle('active', mode === 'topic');
+            document.getElementById('paper-panel').style.display = mode === 'paper' ? 'flex' : 'none';
+            document.getElementById('topic-panel').style.display = mode === 'topic' ? 'flex' : 'none';
+            if (mode === 'paper') applyFilters();
+            else applyTopicFilters();
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  FULL PAPER MODE UI
+        // ═══════════════════════════════════════════════════════
+        function buildPaperUI() {
+            const mcq = bank.filter(q => q.displayType === 'MCQ').length;
+            const msq = bank.filter(q => q.displayType === 'MSQ').length;
+            const nat = bank.filter(q => q.displayType === 'NAT').length;
+            document.getElementById('cfg-stats').innerHTML = `
+    <div class="cstat"><div class="cv">${bank.length}</div><div class="cl">Total Qs</div></div>
+    <div class="cstat"><div class="cv">${mcq}</div><div class="cl">MCQ</div></div>
+    <div class="cstat"><div class="cv">${msq}</div><div class="cl">MSQ</div></div>
+    <div class="cstat"><div class="cv">${nat}</div><div class="cl">NAT</div></div>`;
+
+            const years = [...new Set(bank.map(q => q.year).filter(Boolean))].sort((a, b) => b - a);
+            const ysel = document.getElementById('f-year');
+            ysel.innerHTML = '<option value="all">All Years (1987–2025)</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+            const subjs = [...new Set(bank.map(q => q.subject))].sort();
+            document.getElementById('subj-tags').innerHTML = subjs.map(s => `<div class="stag" data-s="${s}" onclick="toggleSubj(this,'${escAttr(s)}')">${s}</div>`).join('');
+
+            document.getElementById('diff-tags').innerHTML = ['Easy', 'Normal', 'Medium', 'Hard'].map(d =>
+                `<div class="dtag" data-d="${d}" onclick="toggleDiff(this,'${d}')">${d}</div>`).join('');
+
+            applyFilters();
+        }
+
+        function toggleSubj(el, s) {
+            if (selSubjs.has(s)) { selSubjs.delete(s); el.classList.remove('on') }
+            else { selSubjs.add(s); el.classList.add('on') }
+            applyFilters();
+        }
+        function toggleDiff(el, d) {
+            if (selDiffs.has(d)) { selDiffs.delete(d); el.classList.remove('on') }
+            else { selDiffs.add(d); el.classList.add('on') }
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const yr = document.getElementById('f-year').value;
+            const tp = document.getElementById('f-type').value;
+            const mx = document.getElementById('f-max').value;
+            let pool = bank.filter(q => {
+                if (yr !== 'all' && String(q.year) !== yr) return false;
+                if (tp === 'multiple-choice' && q.isNAT) return false;
+                if (tp === 'numerical' && !q.isNAT) return false;
+                if (selSubjs.size > 0 && !selSubjs.has(q.subject)) return false;
+                if (selDiffs.size > 0 && !selDiffs.has(q.difficulty)) return false;
+                return true;
+            });
+            const max = mx === 'all' ? pool.length : parseInt(mx);
+            if (pool.length > max) pool = pool.slice(0, max);
+            const mcq = pool.filter(q => q.displayType === 'MCQ').length;
+            const msq = pool.filter(q => q.displayType === 'MSQ').length;
+            const nat = pool.filter(q => q.displayType === 'NAT').length;
+            document.getElementById('paper-count').innerHTML = `<b>${pool.length}</b> questions · MCQ <b>${mcq}</b> · MSQ <b>${msq}</b> · NAT <b>${nat}</b>`;
+            document.getElementById('start-btn').style.display = pool.length > 0 ? 'block' : 'none';
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  TOPIC MODE UI
+        // ═══════════════════════════════════════════════════════
+        function buildTopicUI() {
+            const tree = new Map();
+            bank.forEach(q => {
+                const s = q.subject || 'Unknown';
+                const t = q.topic || 'General';
+                if (!tree.has(s)) tree.set(s, new Map());
+                const tm = tree.get(s);
+                tm.set(t, (tm.get(t) || 0) + 1);
+            });
+
+            const acc = document.getElementById('subj-accordion');
+            acc.innerHTML = '';
+            [...tree.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([subj, topics]) => {
+                const subjTotal = [...topics.values()].reduce((a, b) => a + b, 0);
+                const block = document.createElement('div');
+                block.className = 'subj-block';
+                block.innerHTML = `
+      <div class="subj-hdr" onclick="toggleSubjBlock(this,'${escAttr(subj)}')">
+        <div class="subj-chk" id="sc-${escId(subj)}"></div>
+        <div class="subj-name" title="${escAttr(subj)}">${subj}</div>
+        <div class="subj-meta">${subjTotal} Qs</div>
+        <div class="subj-arrow">▶</div>
+      </div>
+      <div class="topic-list" id="tl-${escId(subj)}">
+        ${[...topics.entries()].sort((a, b) => b[1] - a[1]).map(([topic, cnt]) => `
+          <div class="topic-row" onclick="toggleTopic('${escAttr(subj)}','${escAttr(topic)}',this)">
+            <div class="topic-chk" id="tc-${escId(subj + '||' + topic)}"></div>
+            <div class="topic-name" title="${escAttr(topic)}">${topic}</div>
+            <div class="topic-cnt">${cnt}</div>
+          </div>`).join('')}
+      </div>`;
+                acc.appendChild(block);
+            });
+        }
+
+        function toggleSubjBlock(hdr, subj) {
+            hdr.classList.toggle('open');
+            const tl = document.getElementById('tl-' + escId(subj));
+            tl.classList.toggle('open');
+        }
+
+        function toggleTopic(subj, topic, rowEl) {
+            const key = subj + '||' + topic;
+            if (selTopics.has(key)) {
+                selTopics.delete(key);
+                rowEl.querySelector('.topic-chk').classList.remove('on');
+            } else {
+                selTopics.set(key, { subj, topic });
+                rowEl.querySelector('.topic-chk').classList.add('on');
+            }
+            updateSubjCheck(subj);
+            updateSelPills();
+            applyTopicFilters();
+        }
+
+        function updateSubjCheck(subj) {
+            const allTopics = [...document.querySelectorAll(`#tl-${escId(subj)} .topic-chk`)];
+            const selCount = [...selTopics.keys()].filter(k => k.startsWith(subj + '||')).length;
+            const chk = document.getElementById('sc-' + escId(subj));
+            chk.className = 'subj-chk' + (selCount === 0 ? '' : selCount === allTopics.length ? ' full' : ' partial');
+            chk.textContent = selCount > 0 ? (selCount === allTopics.length ? '✓' : '–') : '';
+        }
+
+        function updateSelPills() {
+            const cont = document.getElementById('sel-pills');
+            if (selTopics.size === 0) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
+            cont.style.display = 'flex';
+            cont.innerHTML = [...selTopics.entries()].map(([key, { subj, topic }]) => `
+    <div class="sel-pill">
+      <span>${topic}<span style="opacity:.6;margin-left:3px">(${subj.split(' ')[0]})</span></span>
+      <span class="px" onclick="removeTopic('${escAttr(key)}')">✕</span>
+    </div>`).join('');
+        }
+
+        function removeTopic(key) {
+            if (!selTopics.has(key)) return;
+            const { subj } = selTopics.get(key);
+            selTopics.delete(key);
+            const chkEl = document.getElementById('tc-' + escId(key));
+            if (chkEl) chkEl.classList.remove('on');
+            updateSubjCheck(subj);
+            updateSelPills();
+            applyTopicFilters();
+        }
+
+        function applyTopicFilters() {
+            const tp = document.getElementById('tf-type').value;
+            const df = document.getElementById('tf-diff').value;
+            const mx = document.getElementById('tf-max').value;
+            if (selTopics.size === 0) {
+                document.getElementById('topic-count').textContent = '← Select at least one topic above to begin';
+                document.getElementById('start-btn').style.display = 'none';
+                return;
+            }
+            let pool = bank.filter(q => {
+                const key = q.subject + '||' + (q.topic || 'General');
+                if (!selTopics.has(key)) return false;
+                if (tp === 'multiple-choice' && q.isNAT) return false;
+                if (tp === 'numerical' && !q.isNAT) return false;
+                if (df !== 'all' && q.difficulty !== df) return false;
+                return true;
+            });
+            const max = mx === 'all' ? pool.length : parseInt(mx);
+            if (pool.length > max) pool = pool.slice(0, max);
+            const mcq = pool.filter(q => q.displayType === 'MCQ').length;
+            const msq = pool.filter(q => q.displayType === 'MSQ').length;
+            const nat = pool.filter(q => q.displayType === 'NAT').length;
+            document.getElementById('topic-count').innerHTML =
+                `<b>${pool.length}</b> questions from <b>${selTopics.size}</b> topic(s) · MCQ <b>${mcq}</b> · MSQ <b>${msq}</b> · NAT <b>${nat}</b>`;
+            document.getElementById('start-btn').style.display = pool.length > 0 ? 'block' : 'none';
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  START EXAM
+        // ═══════════════════════════════════════════════════════
+        async function startExam() {
+            showLoad('Preparing exam…'); setP(30);
+            let pool;
+
+            if (currentMode === 'paper') {
+                const yr = document.getElementById('f-year').value;
+                const tp = document.getElementById('f-type').value;
+                const mx = document.getElementById('f-max').value;
+                const ord = document.getElementById('f-order').value;
+                pool = bank.filter(q => {
+                    if (yr !== 'all' && String(q.year) !== yr) return false;
+                    if (tp === 'multiple-choice' && q.isNAT) return false;
+                    if (tp === 'numerical' && !q.isNAT) return false;
+                    if (selSubjs.size > 0 && !selSubjs.has(q.subject)) return false;
+                    if (selDiffs.size > 0 && !selDiffs.has(q.difficulty)) return false;
+                    return true;
+                });
+                const max = mx === 'all' ? pool.length : parseInt(mx);
+                if (pool.length > max) pool = pool.slice(0, max);
+                if (ord === 'shuffle') pool.sort(() => Math.random() - .5);
+                else if (ord === 'subject') pool.sort((a, b) => a.subject.localeCompare(b.subject) || a.year - b.year);
+                else pool.sort((a, b) => a.year - b.year || a.number - b.number);
+            } else {
+                const tp = document.getElementById('tf-type').value;
+                const df = document.getElementById('tf-diff').value;
+                const mx = document.getElementById('tf-max').value;
+                const ord = document.getElementById('tf-order').value;
+                pool = bank.filter(q => {
+                    const key = q.subject + '||' + (q.topic || 'General');
+                    if (!selTopics.has(key)) return false;
+                    if (tp === 'multiple-choice' && q.isNAT) return false;
+                    if (tp === 'numerical' && !q.isNAT) return false;
+                    if (df !== 'all' && q.difficulty !== df) return false;
+                    return true;
+                });
+                const max = mx === 'all' ? pool.length : parseInt(mx);
+                if (pool.length > max) pool = pool.slice(0, max);
+                if (ord === 'shuffle') pool.sort(() => Math.random() - .5);
+                else pool.sort((a, b) => a.year - b.year || a.number - b.number);
+            }
+
+            questions = pool.map((q, i) => ({ ...q, id: i }));
+            answers = {}; statuses = {};
+            questions.forEach((_, i) => { statuses[i] = S.NV });
+            lockedSecs = new Set();
+
+            sections = buildSections(questions);
+            curSec = 0; curQ = sections[0].indices[0];
+
+            timeLeft = Math.min(10800, Math.max(1800, Math.ceil(questions.length / 65 * 10800)));
+
+            setP(100);
+            await new Promise(r => setTimeout(r, 300));
+            hideLoad();
+
+            let label = 'GATE CS';
+            if (currentMode === 'topic') {
+                const topics = [...selTopics.values()].map(t => t.topic);
+                label = topics.length <= 2 ? topics.join(' + ') : `${topics[0]} + ${topics.length - 1} more`;
+            } else {
+                const yr = document.getElementById('f-year').value;
+                label = yr !== 'all' ? `GATE CS ${yr}` : 'GATE CS PYQ Bank';
+            }
+            document.getElementById('eh-name').textContent = label;
+            document.getElementById('res-exam-lbl').textContent = label;
+            document.getElementById('rp-lbl').textContent = label;
+            document.getElementById('mode-badge').textContent = currentMode === 'topic' ? 'TOPIC TEST' : 'PAPER TEST';
+
+            document.getElementById('upload-screen').style.display = 'none';
+            document.getElementById('exam-screen').style.display = 'flex';
+            document.body.classList.add('in-exam');
+
+            renderSecTabs(); renderPalette(); showQ(curQ); startTimer(); buildNatKB();
+        }
+
+        function buildSections(qs) {
+            const map = new Map();
+            qs.forEach((q, i) => {
+                if (!map.has(q.section)) map.set(q.section, []);
+                map.get(q.section).push(i);
+            });
+            if (currentMode === 'topic' && map.size <= 1) {
+                const smap = new Map();
+                qs.forEach((q, i) => {
+                    if (!smap.has(q.subject)) smap.set(q.subject, []);
+                    smap.get(q.subject).push(i);
+                });
+                return [...smap.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([name, indices]) => ({ name, indices }));
+            }
+            return [...map.entries()].sort((a, b) => {
+                if (/general aptitude/i.test(a[0])) return 1;
+                if (/general aptitude/i.test(b[0])) return -1;
+                return a[0].localeCompare(b[0]);
+            }).map(([name, indices]) => ({ name, indices }));
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  TIMER
+        // ═══════════════════════════════════════════════════════
+        function startTimer() {
+            updateTimer();
+            timerInt = setInterval(() => { timeLeft--; updateTimer(); if (timeLeft <= 0) { clearInterval(timerInt); submitExam() } }, 1000);
+        }
+        function updateTimer() {
+            const h = Math.floor(timeLeft / 3600), m = Math.floor(timeLeft % 3600 / 60), s = timeLeft % 60;
+            const el = document.getElementById('timer');
+            el.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+            el.className = 'timer-val' + (timeLeft < 300 ? ' danger' : timeLeft < 900 ? ' warn' : '');
+        }
+        const pad = n => String(n).padStart(2, '0');
+
+        // ═══════════════════════════════════════════════════════
+        //  SECTION TABS
+        // ═══════════════════════════════════════════════════════
+        function renderSecTabs() {
+            document.getElementById('sec-tabs').innerHTML = sections.map((sec, i) => {
+                const locked = lockedSecs.has(i);
+                return `<div class="sec-tab${i === curSec ? ' active' : ''}${locked ? ' locked' : ''}" onclick="switchSec(${i})">${locked ? '🔒 ' : ''}${sec.name} <span style="opacity:.65;font-weight:400">(${sec.indices.length})</span></div>`;
+            }).join('');
+        }
+        function switchSec(idx) {
+            if (idx === curSec || lockedSecs.has(idx)) return;
+            if (!lockedSecs.has(curSec)) {
+                pendingSec = idx;
+                document.getElementById('sec-modal-txt').textContent = `"${sections[curSec].name}" will be locked. You cannot return.`;
+                document.getElementById('sec-modal-ok').onclick = () => { lockedSecs.add(curSec); doSwitch(pendingSec); closeModal('sec-modal') };
+                document.getElementById('sec-modal').style.display = 'flex';
+            } else doSwitch(idx);
+        }
+        function doSwitch(idx) { curSec = idx; curQ = sections[idx].indices[0]; renderSecTabs(); renderPalette(); showQ(curQ) }
+
+        // ═══════════════════════════════════════════════════════
+        //  SHOW QUESTION
+        // ═══════════════════════════════════════════════════════
+        function showQ(idx) {
+            if (idx < 0 || idx >= questions.length) return;
+            curQ = idx;
+            const q = questions[idx];
+            if (statuses[idx] === S.NV) statuses[idx] = S.NA;
+
+            const si = sections.findIndex(s => s.indices.includes(idx));
+            if (si >= 0 && si !== curSec) { curSec = si; renderSecTabs() }
+
+            document.getElementById('q-num-lbl').textContent = `Question ${q.number}`;
+            document.getElementById('q-global').textContent = `Q.${idx + 1} of ${questions.length}`;
+
+            const b = document.getElementById('q-badge');
+            b.textContent = q.displayType;
+            b.className = 'q-type-badge badge-' + (q.displayType === 'NAT' ? 'nat' : q.displayType === 'MSQ' ? 'msq' : 'mcq');
+
+            document.getElementById('q-marks').textContent = `+${q.marks}`;
+            document.getElementById('q-neg').textContent = q.negMarks > 0 ? `-${q.negMarks}` : 'None';
+
+            document.getElementById('q-subj-chip').innerHTML = q.subject ? `<span class="chip">${q.subject}</span>` : '';
+            document.getElementById('q-topic-chip').innerHTML = (q.topic && q.topic !== 'General') ? `<span class="chip chip-topic">${q.topic}</span>` : '';
+            document.getElementById('q-diff-chip').innerHTML = q.difficulty ? `<span class="chip-diff diff-${q.difficulty}">${q.difficulty}</span>` : '';
+            document.getElementById('q-year-chip').innerHTML = q.year ? `<span class="chip-year">📅 ${q.year}</span>` : '';
+
+            const srcLink = document.getElementById('q-src');
+            if (q.sourceURL) { srcLink.href = q.sourceURL; srcLink.style.display = 'inline' }
+            else srcLink.style.display = 'none';
+
+            const qtEl = document.getElementById('q-text');
+            qtEl.innerHTML = renderQuestionText(q.question);
+            renderKaTeX(qtEl);
+
+            document.getElementById('msq-hint').style.display = q.isMSQ ? 'block' : 'none';
+
+            const optGrid = document.getElementById('opts-grid');
+            const natArea = document.getElementById('nat-area');
+            if (q.isNAT) {
+                optGrid.style.display = 'none'; natArea.style.display = 'block';
+                document.getElementById('nat-inp').value = answers[idx] ?? '';
+            } else {
+                natArea.style.display = 'none'; optGrid.style.display = 'flex';
+                const sel = answers[idx];
+                optGrid.innerHTML = q.options.map((opt, oi) => {
+                    const lbl = ['A', 'B', 'C', 'D', 'E'][oi] || String(oi);
+                    const isSel = q.isMSQ ? (Array.isArray(sel) && sel.includes(oi)) : (sel === lbl);
+                    return `<div class="opt${isSel ? (q.isMSQ ? ' sel-msq' : ' sel') : ''}" onclick="selectOpt(${oi},'${lbl}',${idx})">
+        <div class="opt-bubble">${lbl}</div>
+        <div class="opt-text" id="ot-${idx}-${oi}"></div>
+      </div>`;
+                }).join('');
+                q.options.forEach((opt, oi) => {
+                    const el = document.getElementById(`ot-${idx}-${oi}`);
+                    if (el) { el.innerHTML = renderQuestionText(opt); renderKaTeX(el) }
+                });
+            }
+            renderPalette(); updateStats(); updateProgress();
+            document.getElementById('q-content').scrollTop = 0;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  QUESTION TEXT RENDERER
+        //  Handles: ```lang...``` fenced code, `inline code`,
+        //           <br> / \n newlines, then defers to KaTeX
+        // ═══════════════════════════════════════════════════════
+        function renderQuestionText(text) {
+            if (!text) return '';
+
+            // 1. Protect existing $...$ LaTeX by temporarily replacing with placeholders
+            //    so code-block processing doesn't corrupt math expressions.
+            //    We'll restore them after HTML is built.
+            const mathPlaceholders = [];
+            let t = text;
+
+            // Protect display math $$...$$ and \[...\]
+            t = t.replace(/\$\$([\s\S]*?)\$\$/g, (m) => { mathPlaceholders.push(m); return `\x00MATH${mathPlaceholders.length - 1}\x00` });
+            t = t.replace(/\\\[([\s\S]*?)\\\]/g, (m) => { mathPlaceholders.push(m); return `\x00MATH${mathPlaceholders.length - 1}\x00` });
+            // Protect inline math $...$ and \(...\)
+            t = t.replace(/\$([^\$\n]+?)\$/g, (m) => { mathPlaceholders.push(m); return `\x00MATH${mathPlaceholders.length - 1}\x00` });
+            t = t.replace(/\\\(([\s\S]*?)\\\)/g, (m) => { mathPlaceholders.push(m); return `\x00MATH${mathPlaceholders.length - 1}\x00` });
+
+            // 2. Process fenced code blocks: ```lang\ncode\n``` or ```\ncode\n```
+            t = t.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+                const safeLang = lang ? escH(lang.trim()) : '';
+                const safeCode = escH(code.replace(/^\n/, '').replace(/\n$/, ''));
+                const langAttr = safeLang ? ` data-lang="${safeLang}"` : '';
+                return `<pre${langAttr}><code>${safeCode}</code></pre>`;
+            });
+
+            // 3. Process inline code `...` (not inside pre blocks)
+            // Split on pre blocks to avoid touching code inside them
+            const parts = t.split(/(<pre[\s\S]*?<\/pre>)/g);
+            t = parts.map((part, i) => {
+                if (i % 2 === 1) return part; // it's a <pre> block, leave alone
+                return part.replace(/`([^`\n]+?)`/g, (_, code) => `<code>${escH(code)}</code>`);
+            }).join('');
+
+            // 4. Convert <br> tags and bare \n newlines outside pre blocks
+            const parts2 = t.split(/(<pre[\s\S]*?<\/pre>)/g);
+            t = parts2.map((part, i) => {
+                if (i % 2 === 1) return part;
+                return part
+                    .replace(/<br\s*\/?>/gi, '<br>')   // normalise existing <br>
+                    .replace(/\n/g, '<br>');             // bare newlines → <br>
+            }).join('');
+
+            // 5. Restore math placeholders
+            t = t.replace(/\x00MATH(\d+)\x00/g, (_, idx) => mathPlaceholders[parseInt(idx)]);
+
+            return t;
+        }
+
+        function renderKaTeX(el) {
+            if (typeof renderMathInElement === 'function') {
+                try {
+                    // Skip rendering inside <pre> and <code> tags to avoid mangling code blocks
+                    renderMathInElement(el, {
+                        delimiters: [
+                            { left: '$$', right: '$$', display: true },
+                            { left: '$', right: '$', display: false },
+                            { left: '\\(', right: '\\)', display: false },
+                            { left: '\\[', right: '\\]', display: true }
+                        ],
+                        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                        throwOnError: false
+                    })
+                } catch (e) { }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  ANSWER / NAVIGATION
+        // ═══════════════════════════════════════════════════════
+        function selectOpt(oi, lbl, idx) {
+            if (idx !== curQ) return;
+            const q = questions[idx];
+            if (q.isMSQ) {
+                let cur = Array.isArray(answers[idx]) ? [...answers[idx]] : [];
+                const pos = cur.indexOf(oi);
+                if (pos >= 0) cur.splice(pos, 1); else cur.push(oi);
+                if (cur.length > 0) answers[idx] = cur; else delete answers[idx];
+            } else {
+                if (answers[idx] === lbl) delete answers[idx]; else answers[idx] = lbl;
+            }
+            showQ(idx);
+        }
+
+        function commitAns() {
+            if (questions[curQ]?.isNAT) {
+                const v = document.getElementById('nat-inp').value.trim();
+                if (v) answers[curQ] = v; else delete answers[curQ];
+            }
+        }
+        function hasAns(idx) { const a = answers[idx]; if (a === undefined || a === null) return false; if (Array.isArray(a)) return a.length > 0; return String(a).trim().length > 0 }
+
+        function saveNext() { commitAns(); if (statuses[curQ] !== S.MAS) statuses[curQ] = hasAns(curQ) ? S.ANS : S.NA; navQ(1) }
+        function markReview() { commitAns(); statuses[curQ] = S.MRK; navQ(1) }
+        function markAndSave() { commitAns(); statuses[curQ] = hasAns(curQ) ? S.MAS : S.MRK; navQ(1) }
+        function clearResp() { delete answers[curQ]; if ([S.ANS, S.MAS].includes(statuses[curQ])) statuses[curQ] = S.NA; document.getElementById('nat-inp').value = ''; showQ(curQ) }
+        function navQ(d) {
+            const sec = sections[curSec];
+            const pos = sec.indices.indexOf(curQ);
+            if (d === 1 && pos < sec.indices.length - 1) showQ(sec.indices[pos + 1]);
+            else if (d === -1 && pos > 0) showQ(sec.indices[pos - 1]);
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  PALETTE & STATS
+        // ═══════════════════════════════════════════════════════
+        function renderPalette() {
+            const sec = sections[curSec];
+            document.getElementById('rp-sec-lbl').textContent = sec?.name ?? '';
+            document.getElementById('palette').innerHTML = (sec?.indices ?? []).map(idx => {
+                const st = statuses[idx] ?? S.NV;
+                const cls = { [S.NV]: 'pb-nv', [S.NA]: 'pb-na', [S.ANS]: 'pb-ans', [S.MRK]: 'pb-mrk', [S.MAS]: 'pb-mas' }[st];
+                const q = questions[idx];
+                return `<div class="pb ${cls}${idx === curQ ? ' cur' : ''}" onclick="goQ(${idx})" title="${q.subject}${q.topic ? ' › ' + q.topic : ''}">${q.number}</div>`;
+            }).join('');
+        }
+        function goQ(idx) { commitAns(); showQ(idx) }
+
+        function updateStats() {
+            let ans = 0, na = 0, mrk = 0;
+            Object.values(statuses).forEach(s => {
+                if (s === S.ANS || s === S.MAS) ans++;
+                else if (s === S.NA) na++;
+                if (s === S.MRK || s === S.MAS) mrk++;
+            });
+            document.getElementById('st-ans').textContent = ans;
+            document.getElementById('st-na').textContent = na;
+            document.getElementById('st-mrk').textContent = mrk;
+        }
+        function updateProgress() {
+            const ans = Object.values(statuses).filter(s => s === S.ANS || s === S.MAS).length;
+            const pct = questions.length ? ans / questions.length * 100 : 0;
+            document.getElementById('prog-fill').style.width = pct + '%';
+            document.getElementById('prog-txt').textContent = `${ans}/${questions.length}`;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  NAT KEYBOARD
+        // ═══════════════════════════════════════════════════════
+        function buildNatKB() {
+            const keys = ['7', '8', '9', '⌫', '4', '5', '6', '.', '1', '2', '3', '-', '0', '00', 'CLR', '↵'];
+            document.getElementById('nat-kb').innerHTML = keys.map(k => `<div class="nat-key${k === '⌫' ? ' nat-bs' : k === 'CLR' ? ' nat-clr' : ''}" onclick="natKey('${k}')">${k}</div>`).join('');
+        }
+        function natKey(k) {
+            const el = document.getElementById('nat-inp');
+            if (k === '⌫') el.value = el.value.slice(0, -1);
+            else if (k === 'CLR') el.value = '';
+            else if (k === '↵') saveNext();
+            else if (k === '.' && !el.value.includes('.')) el.value += '.';
+            else if (k === '-' && !el.value.startsWith('-')) el.value = '-' + el.value;
+            else if (k !== '.' && k !== '-') el.value += k;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  SUBMIT
+        // ═══════════════════════════════════════════════════════
+        function showSubmitModal() {
+            const ans = Object.values(statuses).filter(s => s === S.ANS || s === S.MAS).length;
+            const na = Object.values(statuses).filter(s => s === S.NA || s === S.NV).length;
+            const mrk = Object.values(statuses).filter(s => s === S.MRK || s === S.MAS).length;
+            const nv = Object.values(statuses).filter(s => s === S.NV).length;
+            document.getElementById('modal-stats').innerHTML = `
+    <div class="ms-item"><div class="ms-lbl">Answered</div><div class="ms-val" style="color:var(--success)">${ans}</div></div>
+    <div class="ms-item"><div class="ms-lbl">Not Answered</div><div class="ms-val" style="color:var(--danger)">${na}</div></div>
+    <div class="ms-item"><div class="ms-lbl">Marked Review</div><div class="ms-val" style="color:var(--marked)">${mrk}</div></div>
+    <div class="ms-item"><div class="ms-lbl">Not Visited</div><div class="ms-val" style="color:#888">${nv}</div></div>`;
+            document.getElementById('submit-modal').style.display = 'flex';
+        }
+        function submitExam() { clearInterval(timerInt); closeModal('submit-modal'); commitAns(); showResults() }
+
+        // ═══════════════════════════════════════════════════════
+        //  RESULTS
+        // ═══════════════════════════════════════════════════════
+        function checkAns(q, ua) {
+            if (!hasAns(q.id)) return 'unattempted';
+            if (q.isNAT) {
+                if (q.correctNum === null) return 'unattempted';
+                const n1 = parseFloat(ua), n2 = parseFloat(q.correctNum);
+                if (!isNaN(n1) && !isNaN(n2) && Math.abs(n1 - n2) <= 0.01) return 'correct';
+                if (String(ua).trim() === String(q.correctNum).trim()) return 'correct';
+                return 'wrong';
+            }
+            if (q.isMSQ) {
+                const us = new Set(Array.isArray(ua) ? ua : []);
+                const cs = new Set(q.correctIdx || []);
+                if ([...cs].every(x => us.has(x)) && [...us].every(x => cs.has(x))) return 'correct';
+                if ([...us].some(x => !cs.has(x))) return 'wrong';
+                return 'partial';
+            }
+            if (q.correctIdx && q.correctIdx.length > 0) {
+                const cl = ['A', 'B', 'C', 'D', 'E'][q.correctIdx[0]];
+                return ua === cl ? 'correct' : 'wrong';
+            }
+            return 'unattempted';
+        }
+        function getPts(q, r) { if (r === 'correct') return q.marks; if (r === 'wrong') return -q.negMarks; return 0 }
+        function getCorrectDisp(q) {
+            if (q.isNAT) return q.correctNum ?? 'N/A';
+            if (q.correctIdx?.length > 0) return q.correctIdx.map(i => ['A', 'B', 'C', 'D', 'E'][i] || i).join(', ');
+            return 'N/A';
+        }
+
+        function showResults() {
+            document.getElementById('exam-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'flex';
+            document.body.classList.remove('in-exam');
+
+            let score = 0, maxScore = 0, correct = 0, wrong = 0, partial = 0, skip = 0;
+            const qRes = [];
+            const subjMap = {};
+            const topicMap = {};
+
+            questions.forEach((q, idx) => {
+                maxScore += q.marks;
+                const ua = answers[idx];
+                const r = checkAns(q, ua);
+                const pts = getPts(q, r);
+                score += pts;
+                if (r === 'correct') correct++; else if (r === 'wrong') wrong++; else if (r === 'partial') partial++; else skip++;
+
+                const subj = q.subject || 'General';
+                if (!subjMap[subj]) subjMap[subj] = { c: 0, w: 0, s: 0, t: 0, pts: 0, maxPts: 0 };
+                subjMap[subj].t++; subjMap[subj].maxPts += q.marks; subjMap[subj].pts += pts;
+                if (r === 'correct') subjMap[subj].c++; else if (r === 'wrong') subjMap[subj].w++; else subjMap[subj].s++;
+
+                const tk = subj + '||' + (q.topic || 'General');
+                if (!topicMap[tk]) topicMap[tk] = { subj, topic: q.topic || 'General', c: 0, w: 0, s: 0, t: 0 };
+                topicMap[tk].t++;
+                if (r === 'correct') topicMap[tk].c++; else if (r === 'wrong') topicMap[tk].w++; else topicMap[tk].s++;
+
+                qRes.push({ q, ua, r, pts });
+            });
+
+            window._qRes = qRes;
+            const pct = maxScore > 0 ? (score / maxScore * 100).toFixed(1) : 0;
+            const hasKeys = questions.some(q => q.correctIdx || q.correctNum !== null);
+            const totalTime = Math.min(10800, Math.max(1800, Math.ceil(questions.length / 65 * 10800)));
+            const used = Math.max(0, totalTime - timeLeft);
+            const um = Math.floor(used / 60), us = used % 60;
+
+            const subjRows = Object.entries(subjMap).sort((a, b) => b[1].t - a[1].t).map(([s, st]) => {
+                const acc = st.t ? st.c / st.t * 100 : 0;
+                const col = acc >= 70 ? '#2e7d32' : acc >= 40 ? '#f57c00' : '#d32f2f';
+                return `<div class="subj-row">
+      <div class="sr-name" title="${s}">${s}</div>
+      <div class="sr-bar-wrap"><div class="sr-bar" style="width:${acc.toFixed(1)}%;background:${col}"></div></div>
+      <div class="sr-stats">${st.c}✓ ${st.w}✗ ${hasKeys ? `· ${st.pts.toFixed(1)}pts` : ''}</div>
+    </div>`;
+            }).join('');
+
+            const topicKeys = Object.keys(topicMap);
+            let topicSection = '';
+            if (currentMode === 'topic' || topicKeys.length > 1) {
+                const topicRows = Object.entries(topicMap).sort((a, b) => b[1].t - a[1].t).map(([tk, st]) => {
+                    const acc = st.t ? Math.round(st.c / st.t * 100) : 0;
+                    const col = acc >= 70 ? '#2e7d32' : acc >= 40 ? '#f57c00' : '#d32f2f';
+                    return `<tr>
+        <td><b>${st.topic}</b></td>
+        <td style="font-size:0.72rem;color:#777">${st.subj}</td>
+        <td>${st.t}</td>
+        <td style="color:var(--success);font-weight:700">${st.c}</td>
+        <td style="color:var(--danger);font-weight:700">${st.w}</td>
+        <td style="color:#888">${st.s}</td>
+        <td><span style="color:${col};font-weight:700">${acc}%</span>
+          <span class="topic-acc-bar"><span class="topic-acc-fill" style="width:${acc}%;background:${col}"></span></span></td>
+      </tr>`;
+                }).join('');
+                topicSection = `<div class="topic-bkdn">
+      <div class="sec-title">📌 Topic-wise Breakdown</div>
+      <table class="topic-table">
+        <thead><tr><th>Topic</th><th>Subject</th><th>Qs</th><th>✓ Correct</th><th>✗ Wrong</th><th>— Skip</th><th>Accuracy</th></tr></thead>
+        <tbody>${topicRows}</tbody>
+      </table>
+    </div>`;
+            }
+
+            document.getElementById('res-body').innerHTML = `
+    <div class="score-card">
+      <svg class="score-donut" viewBox="0 0 36 36">
+        <path d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke="#e8f0fe" stroke-width="3.5"/>
+        <path d="M18 2.0845 a15.9155 15.9155 0 0 1 0 31.831 a15.9155 15.9155 0 0 1 0-31.831" fill="none"
+          stroke="${score >= 0 ? '#2e7d32' : '#d32f2f'}" stroke-width="3.5"
+          stroke-dasharray="${hasKeys ? Math.max(0, Math.min(100, score / maxScore * 100)).toFixed(1) : 0},100"
+          transform="rotate(-90 18 18)"/>
+        <text x="18" y="21" text-anchor="middle" font-size="6" font-weight="bold"
+          fill="${score >= 0 ? '#2e7d32' : '#d32f2f'}">${hasKeys ? score.toFixed(1) : '—'}</text>
+      </svg>
+      <div class="score-info">
+        <h3>${hasKeys ? `Score: ${score.toFixed(2)} / ${maxScore}` : 'Exam Completed!'}</h3>
+        ${hasKeys ? `<div class="score-pct">${pct}%</div>` : '<div style="color:#888;margin-top:4px">Answer keys available for all questions</div>'}
+        <div class="score-meta">
+          <span class="score-chip">⏱ ${um}m ${us}s used</span>
+          <span class="score-chip">📊 ${questions.length} questions</span>
+          <span class="score-chip">${currentMode === 'topic' ? '🎯 Topic Test' : '📄 Paper Test'}</span>
+          ${partial > 0 ? `<span class="score-chip">⚡ ${partial} MSQ partial</span>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="sc-val sc-green">${correct}</div><div class="sc-lbl">Correct</div></div>
+      <div class="stat-card"><div class="sc-val sc-red">${wrong}</div><div class="sc-lbl">Wrong</div></div>
+      <div class="stat-card"><div class="sc-val sc-orange">${skip}</div><div class="sc-lbl">Skipped</div></div>
+      <div class="stat-card"><div class="sc-val sc-purple">${partial}</div><div class="sc-lbl">Partial (MSQ)</div></div>
+      <div class="stat-card"><div class="sc-val sc-blue">${hasKeys ? (score >= 0 ? '+' : '') + score.toFixed(2) : '—'}</div><div class="sc-lbl">Net Score</div></div>
+    </div>
+
+    <div class="subj-bkdn">
+      <div class="sec-title">📚 Subject-wise Performance</div>
+      <div class="subj-rows">${subjRows || '<div style="color:#888;font-size:.82rem">No data</div>'}</div>
+    </div>
+
+    ${topicSection}
+
+    <div class="review-wrap">
+      <div class="sec-title">📋 Question-wise Analysis</div>
+      <div class="rf-row">
+        <button class="rf-btn active" onclick="filterRes('all',this)">All (${qRes.length})</button>
+        <button class="rf-btn" onclick="filterRes('correct',this)">✓ Correct (${correct})</button>
+        <button class="rf-btn" onclick="filterRes('wrong',this)">✗ Wrong (${wrong})</button>
+        <button class="rf-btn" onclick="filterRes('partial',this)">⚡ Partial (${partial})</button>
+        <button class="rf-btn" onclick="filterRes('unattempted',this)">— Skipped (${skip})</button>
+      </div>
+      <div id="res-table"></div>
+    </div>`;
+
+            renderResTable('all');
+            setTimeout(() => document.querySelectorAll('.res-q').forEach(el => renderKaTeX(el)), 200);
+        }
+
+        function filterRes(f, btn) {
+            document.querySelectorAll('.rf-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active'); renderResTable(f);
+            setTimeout(() => document.querySelectorAll('.res-q').forEach(el => renderKaTeX(el)), 200);
+        }
+        function renderResTable(filter) {
+            const rows = (window._qRes || []).filter(r => filter === 'all' || r.r === filter);
+            document.getElementById('res-table').innerHTML = `<table class="rev-table">
+    <thead><tr><th>Q#</th><th>Question</th><th>Subject / Topic</th><th>Type</th><th>Your Ans</th><th>Correct</th><th>Result</th><th>Pts</th><th>Ref</th></tr></thead>
+    <tbody>${rows.map(({ q, ua, r, pts }) => {
+                const uaDisp = Array.isArray(ua) ? ua.map(i => ['A', 'B', 'C', 'D'][i] || i).join(',') : (ua ?? '—');
+                const qShort = q.question.replace(/\$[^$]+\$/g, '[…]').substring(0, 80) + (q.question.length > 80 ? '…' : '');
+                return `<tr>
+        <td><b>${q.number}</b>${q.year ? `<div style="font-size:.63rem;color:#aaa">${q.year}</div>` : ''}</td>
+        <td style="max-width:190px;font-size:.73rem;color:#555">${escH(qShort)}</td>
+        <td style="font-size:.7rem;color:#666;max-width:130px">${escH(q.subject)}${q.topic && q.topic !== 'General' ? `<br><span style="color:#aaa">${escH(q.topic)}</span>` : ''}</td>
+        <td><span class="q-type-badge badge-${q.displayType === 'NAT' ? 'nat' : q.displayType === 'MSQ' ? 'msq' : 'mcq'}" style="font-size:.63rem">${q.displayType}</span></td>
+        <td style="color:${r === 'correct' ? 'var(--success)' : r === 'wrong' ? 'var(--danger)' : '#aaa'};font-weight:600">${escH(String(uaDisp))}</td>
+        <td style="color:var(--success);font-weight:600">${escH(getCorrectDisp(q))}</td>
+        <td>${r === 'correct' ? '<span class="badge-ok">✓ Correct</span>' : r === 'wrong' ? '<span class="badge-wr">✗ Wrong</span>' : r === 'partial' ? '<span class="badge-pt">⚡ Partial</span>' : '<span class="badge-sk">—</span>'}</td>
+        <td style="color:${pts > 0 ? 'var(--success)' : pts < 0 ? 'var(--danger)' : '#aaa'};font-weight:700">${pts > 0 ? '+' : ''}${pts.toFixed(2)}</td>
+        <td>${q.sourceURL ? `<a href="${q.sourceURL}" target="_blank" style="color:var(--primary);font-size:.68rem;text-decoration:none">GO↗</a>` : '—'}</td>
+      </tr>`;
+            }).join('')}</tbody></table>`;
+        }
+
+        // ═══════════════════════════════════════════════════════
+        //  UTILITIES
+        // ═══════════════════════════════════════════════════════
+        function closeModal(id) { document.getElementById(id).style.display = 'none' }
+        function showLoad(msg) { document.getElementById('load-msg').textContent = msg; document.getElementById('load-fill').style.width = '0%'; document.getElementById('loading-ov').style.display = 'flex' }
+        function setP(p) { document.getElementById('load-fill').style.width = p + '%' }
+        function hideLoad() { document.getElementById('loading-ov').style.display = 'none' }
+        function escH(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+        function escAttr(s) { return String(s).replace(/'/g, '\\\'').replace(/"/g, '&quot;') }
+        function escId(s) { return String(s).replace(/[^a-zA-Z0-9]/g, '_') }
+
+        function resetToUpload() {
+            clearInterval(timerInt);
+            questions = []; sections = []; answers = {}; statuses = {}; bank = [];
+            selSubjs = new Set(); selDiffs = new Set(); selTopics = new Map();
+            document.body.classList.remove('in-exam');
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('paper-panel').style.display = 'none';
+            document.getElementById('topic-panel').style.display = 'none';
+            document.getElementById('mode-sw').style.display = 'none';
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('parse-status').textContent = '';
+            document.getElementById('upload-screen').style.display = 'flex';
+        }
+
+        document.addEventListener('keydown', e => {
+            const inExam = document.getElementById('exam-screen').style.display !== 'none';
+            if (!inExam) return;
+            if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'a', 's', 'p'].includes(e.key.toLowerCase())) e.preventDefault();
+            if (e.key === 'ArrowRight' || e.key === 'PageDown') navQ(1);
+            if (e.key === 'ArrowLeft' || e.key === 'PageUp') navQ(-1);
+            if (e.key === 'F11') { e.preventDefault(); document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.() }
+        });
+        document.addEventListener('contextmenu', e => { if (document.getElementById('exam-screen').style.display !== 'none') e.preventDefault() });
+    </script>
+</body>
+
+</html>
